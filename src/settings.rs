@@ -10,22 +10,19 @@ pub enum SecurityProtocol {
     },
 }
 
-impl Default for SecurityProtocol {
-    fn default() -> Self {
-        Self::Plaintext
-    }
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConsumerSettings {
+    pub group_id: String,
+    pub input_topics: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct KafkaSettings {
-    #[serde(default = "String::new")]
     pub bootstrap_servers: String,
-    #[serde(default = "Default::default", flatten)]
+    #[serde(flatten)]
     pub security_protocol: SecurityProtocol,
-    #[serde(default = "String::new")]
-    pub group_id: String,
-    #[serde(default = "Vec::new")]
-    pub input_topics: Vec<String>,
+    #[serde(flatten)]
+    pub consumer: Option<ConsumerSettings>,
 }
 
 impl KafkaSettings {
