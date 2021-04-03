@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "security_protocol")]
 pub enum SecurityProtocol {
     Plaintext,
     SaslSsl {
@@ -11,28 +11,21 @@ pub enum SecurityProtocol {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct KafkaSettings {
-    pub bootstrap_servers: String,
+pub struct ConsumerSettings {
     pub group_id: String,
-    pub security_protocol: SecurityProtocol,
     pub input_topics: Vec<String>,
 }
 
-impl KafkaSettings {
-    pub fn new(
-        bootstrap_servers: String,
-        group_id: String,
-        security_protocol: SecurityProtocol,
-        input_topics: Vec<String>,
-    ) -> Self {
-        Self {
-            bootstrap_servers,
-            group_id,
-            security_protocol,
-            input_topics,
-        }
-    }
+#[derive(Debug, Clone, Deserialize)]
+pub struct KafkaSettings {
+    pub bootstrap_servers: String,
+    #[serde(flatten)]
+    pub security_protocol: SecurityProtocol,
+    #[serde(flatten)]
+    pub consumer: Option<ConsumerSettings>,
+}
 
+impl KafkaSettings {
     pub(crate) fn config<'a>(
         &self,
         config: &'a mut rdkafka::ClientConfig,

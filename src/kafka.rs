@@ -9,12 +9,20 @@ use rdkafka::{
 pub fn consumer(settings: &KafkaSettings) -> Result<StreamConsumer, KafkaError> {
     let mut config = ClientConfig::new();
     let config = settings.config(&mut config);
+    let consumer_settings = settings
+        .consumer
+        .clone()
+        .expect("Consumer settings not specified");
     let consumer: StreamConsumer = config
-        .set("group.id", &settings.group_id)
+        .set("group.id", &consumer_settings.group_id)
         // TODO: Figure out how to remove this setting
         .set("enable.ssl.certificate.verification", "false")
         .create()?;
-    let subscription_topics: Vec<_> = settings.input_topics.iter().map(String::as_str).collect();
+    let subscription_topics: Vec<_> = consumer_settings
+        .input_topics
+        .iter()
+        .map(String::as_str)
+        .collect();
     consumer.subscribe(&subscription_topics)?;
     Ok(consumer)
 }
