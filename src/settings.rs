@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "security_protocol")]
@@ -13,7 +13,16 @@ pub enum SecurityProtocol {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConsumerSettings {
     pub group_id: String,
+    #[serde(deserialize_with = "vec_from_str")]
     pub input_topics: Vec<String>,
+}
+
+pub fn vec_from_str<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(s.split(',').map(From::from).collect())
 }
 
 #[derive(Debug, Clone, Deserialize)]
