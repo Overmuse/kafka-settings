@@ -1,6 +1,7 @@
-use serde::{Deserialize, Deserializer};
+use serde::{de, Deserialize, Deserializer};
+use std::{fmt::Display, str::FromStr};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "security_protocol")]
 pub enum SecurityProtocol {
     Plaintext,
@@ -25,26 +26,21 @@ where
     Ok(s.split(',').map(From::from).collect())
 }
 
-fn default_acks() -> Acks {
-    Acks::Number(1)
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub enum Acks {
-    #[serde(rename = "all")]
-    All,
-    Number(usize),
-}
-
-fn default_retries() -> usize {
-    2147483647
+fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: FromStr,
+    T::Err: Display,
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    T::from_str(&s).map_err(de::Error::custom)
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ProducerSettings {
-    #[serde(default = "default_acks")]
-    pub acks: Acks,
-    #[serde(default = "default_retries")]
+    #[serde(deserialize_with = "from_str")]
+    pub acks: usize,
+    #[serde(deserialize_with = "from_str")]
     pub retries: usize,
 }
 
@@ -55,6 +51,7 @@ pub struct KafkaSettings {
     pub security_protocol: SecurityProtocol,
     #[serde(flatten)]
     pub consumer: Option<ConsumerSettings>,
+    // Doesn't technically need to be an option now, but future-proofing
     #[serde(flatten)]
     pub producer: Option<ProducerSettings>,
 }
@@ -81,5 +78,84 @@ impl KafkaSettings {
             }
         }
         config
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use config::{Config, Environment};
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct Test {
+        kafka: KafkaSettings,
+    }
+
+    #[test]
+    fn bare_settings() {
+        std::env::set_var("KAFKA__BOOTSTRAP_SERVERS", "ADDRESS");
+        std::env::set_var("KAFKA__SECURITY_PROTOCOL", "PLAINTEXT");
+
+        let mut s = Config::new();
+        s.merge(Environment::new().separator("__")).unwrap();
+        let settings: Test = s.try_into().unwrap();
+        assert_eq!(settings.kafka.bootstrap_servers, "ADDRESS".to_string());
+        assert_eq!(
+            settings.kafka.security_protocol,
+            SecurityProtocol::Plaintext
+        );
+        assert!(settings.kafka.consumer.is_none());
+        assert!(settings.kafka.producer.is_none());
+    }
+
+    #[test]
+    fn sasl_ssl() {
+        std::env::set_var("KAFKA__BOOTSTRAP_SERVERS", "ADDRESS");
+        std::env::set_var("KAFKA__SECURITY_PROTOCOL", "SASL_SSL");
+        std::env::set_var("KAFKA__SASL_USERNAME", "USER");
+        std::env::set_var("KAFKA__SASL_PASSWORD", "PASS");
+
+        let mut s = Config::new();
+        s.merge(Environment::new().separator("__")).unwrap();
+        let settings: Test = s.try_into().unwrap();
+        assert_eq!(settings.kafka.bootstrap_servers, "ADDRESS".to_string());
+        assert_eq!(
+            settings.kafka.security_protocol,
+            SecurityProtocol::SaslSsl {
+                sasl_username: "USER".into(),
+                sasl_password: "PASS".into()
+            }
+        );
+    }
+
+    #[test]
+    fn consumer_settings() {
+        std::env::set_var("KAFKA__BOOTSTRAP_SERVERS", "ADDRESS");
+        std::env::set_var("KAFKA__SECURITY_PROTOCOL", "PLAINTEXT");
+        std::env::set_var("KAFKA__GROUP_ID", "group");
+        std::env::set_var("KAFKA__INPUT_TOPICS", "A,B,C");
+        let mut s = Config::new();
+        s.merge(Environment::new().separator("__")).unwrap();
+        let settings: Test = s.try_into().unwrap();
+        let consumer_settings = settings.kafka.consumer.unwrap();
+        assert_eq!(consumer_settings.group_id, "group".to_string());
+        assert_eq!(
+            consumer_settings.input_topics,
+            vec!["A".to_string(), "B".to_string(), "C".to_string()]
+        );
+    }
+
+    #[test]
+    fn producer_settings() {
+        std::env::set_var("KAFKA__BOOTSTRAP_SERVERS", "ADDRESS");
+        std::env::set_var("KAFKA__SECURITY_PROTOCOL", "PLAINTEXT");
+        std::env::set_var("KAFKA__ACKS", "0");
+        std::env::set_var("KAFKA__RETRIES", "0");
+        let mut s = Config::new();
+        s.merge(Environment::new().separator("__")).unwrap();
+        let settings: Test = s.try_into().unwrap();
+        let producer_settings = settings.kafka.producer.unwrap();
+        assert_eq!(producer_settings.acks, 0);
+        assert_eq!(producer_settings.retries, 0);
     }
 }
