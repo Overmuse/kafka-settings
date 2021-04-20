@@ -8,4 +8,5 @@ Environment variables need to be prefixed with `KAFKA__`. The following settings
   - `SASL_PASSWORD`
 - `GROUP_ID` (optional): The group id for consumers.
 - `INPUT_TOPICS` (optional): A CSV list of kafka topics for consumers to subscribe to.
-  
+- `ACKS` (optional): The number of acknowledgements needed from the brokers before committing a message.
+- `RETRIES` (optional): The number of times to retry sending a message to the brokers.
