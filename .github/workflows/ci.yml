@@ -94,3 +94,5 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+
+# TODO: When adding in tests, remember to set `cargo test -- --test-threads=1`

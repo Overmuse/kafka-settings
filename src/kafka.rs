@@ -1,4 +1,4 @@
-use crate::settings::{Acks, KafkaSettings};
+use crate::settings::KafkaSettings;
 use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
@@ -34,12 +34,8 @@ pub fn producer(settings: &KafkaSettings) -> Result<FutureProducer, KafkaError> 
         .producer
         .clone()
         .expect("Producer settings not specified");
-    let acks = match producer_settings.acks {
-        Acks::All => "all".to_string(),
-        Acks::Number(n) => format!("{}", n),
-    };
     let producer: FutureProducer = config
-        .set("acks", acks)
+        .set("acks", format!("{}", producer_settings.acks))
         .set("retries", format!("{}", producer_settings.retries))
         // TODO: Figure out how to remove this setting
         .set("enable.ssl.certificate.verification", "false")
