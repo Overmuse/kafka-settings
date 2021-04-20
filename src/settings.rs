@@ -25,6 +25,23 @@ where
     Ok(s.split(',').map(From::from).collect())
 }
 
+fn default_acks() -> Acks {
+    Acks::Number(1)
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum Acks {
+    #[serde(rename = "all")]
+    All,
+    Number(usize),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProducerSettings {
+    #[serde(default = "default_acks")]
+    pub acks: Acks,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct KafkaSettings {
     pub bootstrap_servers: String,
@@ -32,6 +49,8 @@ pub struct KafkaSettings {
     pub security_protocol: SecurityProtocol,
     #[serde(flatten)]
     pub consumer: Option<ConsumerSettings>,
+    #[serde(flatten)]
+    pub producer: Option<ProducerSettings>,
 }
 
 impl KafkaSettings {
