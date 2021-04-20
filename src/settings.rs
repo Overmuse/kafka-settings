@@ -36,10 +36,16 @@ pub enum Acks {
     Number(usize),
 }
 
+fn default_retries() -> usize {
+    2147483647
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ProducerSettings {
     #[serde(default = "default_acks")]
     pub acks: Acks,
+    #[serde(default = "default_retries")]
+    pub retries: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]

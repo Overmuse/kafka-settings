@@ -40,6 +40,7 @@ pub fn producer(settings: &KafkaSettings) -> Result<FutureProducer, KafkaError> 
     };
     let producer: FutureProducer = config
         .set("acks", acks)
+        .set("retries", format!("{}", producer_settings.retries))
         // TODO: Figure out how to remove this setting
         .set("enable.ssl.certificate.verification", "false")
         .create()?;
