@@ -14,6 +14,8 @@ pub enum SecurityProtocol {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConsumerSettings {
     pub group_id: String,
+    #[serde(default)]
+    pub unique_id: bool,
     #[serde(deserialize_with = "vec_from_str")]
     pub input_topics: Vec<String>,
 }
@@ -139,6 +141,7 @@ mod test {
         let settings: Test = s.try_into().unwrap();
         let consumer_settings = settings.kafka.consumer.unwrap();
         assert_eq!(consumer_settings.group_id, "group".to_string());
+        assert!(!consumer_settings.unique_id);
         assert_eq!(
             consumer_settings.input_topics,
             vec!["A".to_string(), "B".to_string(), "C".to_string()]
