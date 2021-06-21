@@ -5,6 +5,7 @@ use rdkafka::{
     producer::FutureProducer,
     ClientConfig,
 };
+use uuid::Uuid;
 
 pub fn consumer(settings: &KafkaSettings) -> Result<StreamConsumer, KafkaError> {
     let mut config = ClientConfig::new();
@@ -13,8 +14,18 @@ pub fn consumer(settings: &KafkaSettings) -> Result<StreamConsumer, KafkaError> 
         .consumer
         .clone()
         .expect("Consumer settings not specified");
+    let group_id = if consumer_settings.unique_id {
+        format!(
+            "{}_{}",
+            consumer_settings.group_id,
+            Uuid::new_v4().to_string(),
+        )
+    } else {
+        consumer_settings.group_id
+    };
+
     let consumer: StreamConsumer = config
-        .set("group.id", &consumer_settings.group_id)
+        .set("group.id", &group_id)
         // TODO: Figure out how to remove this setting
         .set("enable.ssl.certificate.verification", "false")
         .create()?;
